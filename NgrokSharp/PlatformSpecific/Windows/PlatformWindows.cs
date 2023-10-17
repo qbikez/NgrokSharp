@@ -9,17 +9,8 @@ namespace NgrokSharp.PlatformSpecific.Windows
 {
     public class PlatformWindows : PlatformStrategy
     {
-        public PlatformWindows()
+        public PlatformWindows(string downloadFolder, ILogger? logger = null) : base(downloadFolder, logger)
         {
-            _ngrokProcess = null;
-            _downloadFolder = $"{Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + Path.DirectorySeparatorChar}NgrokSharp{Path.DirectorySeparatorChar}";
-        }
-
-        public PlatformWindows(ILogger logger)
-        {
-            _logger = logger;
-            _ngrokProcess = null;
-            _downloadFolder = $"{Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + Path.DirectorySeparatorChar}NgrokSharp{Path.DirectorySeparatorChar}";
         }
 
         public override async Task RegisterAuthTokenAsync(string authtoken)

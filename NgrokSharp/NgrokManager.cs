@@ -36,68 +36,56 @@ namespace NgrokSharp
         private readonly HttpClient _httpClient;
         private readonly Uri _ngrokDownloadUrl;
         private readonly Uri _ngrokLocalUrl;
-        private readonly ILogger _logger;
+        private ILogger? _logger;
         private PlatformStrategy _platformCode;
 
-        private string _downloadFolder;
+        public string DownloadFolder { get; private set; }
 
         /// <summary>
         ///     Constructor for NgrokManager
         /// </summary>
-        public NgrokManager()
+        public NgrokManager(string? downloadFolder = null, ILogger? logger = null)
         {
+            _logger = logger;
+
             _httpClient = new HttpClient();
             _ngrokLocalUrl = new Uri("http://localhost:4040/api");
-            _downloadFolder =
-                $"{Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + Path.DirectorySeparatorChar}NgrokSharp{Path.DirectorySeparatorChar}";
-
-            //Detect OS and set Platform and Url
-            if (OperatingSystem.IsWindows())
-            {
-                _platformCode = new PlatformWindows();
-                _ngrokDownloadUrl = new Uri("https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip");
-            }
-
-            if (OperatingSystem.IsLinux())
-            {
-                _platformCode = new PlatformLinux();
-                _ngrokDownloadUrl = new Uri("https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip");
-            }
-
-            if (!Directory.Exists(_downloadFolder))
-            {
-                Directory.CreateDirectory(_downloadFolder);
-            }
+            DownloadFolder = downloadFolder ?? DefaultDownloadFolder();
+            
+            _ngrokDownloadUrl = GetDownloadUrl();
+            
+            InitializePlatform();
         }
-        
+
         /// <summary>
         ///     Constructor for NgrokManager. Only use this if you need logging.
         /// </summary>
-        public NgrokManager(ILogger logger)
+        public NgrokManager(ILogger logger) : this(null, logger)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _httpClient = new HttpClient();
-            _ngrokLocalUrl = new Uri("http://localhost:4040/api");
-            _downloadFolder =
-                $"{Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + Path.DirectorySeparatorChar}NgrokSharp{Path.DirectorySeparatorChar}";
+        }
 
-            //Detect OS and set Platform and Url
+        public static string DefaultDownloadFolder() {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            if (string.IsNullOrEmpty(appData)) appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            
+            return $"{appData}{Path.DirectorySeparatorChar}NgrokSharp{Path.DirectorySeparatorChar}";
+        }
+
+        private static Uri? GetDownloadUrl() {
             if (OperatingSystem.IsWindows())
             {
-                _platformCode = new PlatformWindows(_logger);
-                _ngrokDownloadUrl = new Uri("https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip");
+                return new Uri("https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip");
             }
-
             if (OperatingSystem.IsLinux())
             {
-                _platformCode = new PlatformLinux(_logger);
-                _ngrokDownloadUrl = new Uri("https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip");
+                return new Uri("https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip");
+            }
+            if (OperatingSystem.IsMacOS())
+            {
+                return new Uri("https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-darwin-amd64.zip");
             }
 
-            if (!Directory.Exists(_downloadFolder))
-            {
-                Directory.CreateDirectory(_downloadFolder);
-            }
+            return null;
         }
 
         /// <summary>
@@ -109,58 +97,45 @@ namespace NgrokSharp
             httpResponseMessage.EnsureSuccessStatusCode();
 
             var readAsStreamAsync = await httpResponseMessage.Content.ReadAsStreamAsync();
-            await using (var writer = File.Create($"{_downloadFolder}ngrok-stable-amd64.zip"))
+            await using (var writer = File.Create($"{DownloadFolder}ngrok-stable-amd64.zip"))
             {
                 await readAsStreamAsync.CopyToAsync(writer, cancellationToken);
             }
 
-            await Task.Run(() => ZipFile.ExtractToDirectory($"{_downloadFolder}ngrok-stable-amd64.zip", _downloadFolder, true));
+            await Task.Run(() => ZipFile.ExtractToDirectory($"{DownloadFolder}ngrok-stable-amd64.zip", DownloadFolder, true));
 
-            if (File.Exists($"{_downloadFolder}ngrok-stable-amd64.zip"))
+            if (File.Exists($"{DownloadFolder}ngrok-stable-amd64.zip"))
             {
-                File.Delete($"{_downloadFolder}ngrok-stable-amd64.zip");
+                File.Delete($"{DownloadFolder}ngrok-stable-amd64.zip");
             }
+
+            _platformCode.SetExecutionBit($"{DownloadFolder}ngrok");
         }
-        
+
         /// <summary>
         /// Sets the path to a directory that contains the Ngrok executable. Only use this method you don't wish NgrokSharp to manage the ngrok executable. <see cref="DownloadAndUnzipNgrokAsync"/>  
         /// </summary>
         /// <param name="pathToExecutable">Path to a directory that contains the Ngrok executable</param>
         public void SetNgrokDirectory(string pathToExecutable)
         {
-            //Detect OS and set Platform
-            if (OperatingSystem.IsWindows())
-            {
-                _platformCode = new PlatformWindows();
-            }
-
-            if (OperatingSystem.IsLinux())
-            {
-                _platformCode = new PlatformLinux();
-            }
-
-            _downloadFolder = pathToExecutable;
+            DownloadFolder = pathToExecutable;
+            InitializePlatform();
         }
-        
+
         /// <summary>
         /// Sets the path to a directory that contains the Ngrok executable. Only use this method you don't wish NgrokSharp to manage the ngrok executable. <see cref="DownloadAndUnzipNgrokAsync"/>  
         /// </summary>
         /// <param name="pathToExecutable">Path to a directory that contains the Ngrok executable</param>
         /// <param name="logger"></param>
-        public void SetNgrokDirectory(string pathToExecutable,ILogger logger)
+        public void SetNgrokDirectory(string pathToExecutable, ILogger logger)
         {
-            //Detect OS and set Platform and Url
-            if (OperatingSystem.IsWindows())
-            {
-                _platformCode = new PlatformWindows(_logger);
-            }
+            _logger = logger;
+            InitializePlatform();
+        }
 
-            if (OperatingSystem.IsLinux())
-            {
-                _platformCode = new PlatformLinux(_logger);
-            }
-            
-            _downloadFolder = pathToExecutable;
+        private void InitializePlatform() 
+        {
+            _platformCode = PlatformStrategy.Create(DownloadFolder, _logger);
         }
 
         /// <summary>
@@ -199,7 +174,7 @@ namespace NgrokSharp
             {
                 throw new ArgumentNullException(nameof(_logger));
             }
-            
+
             var regions = new Dictionary<Region, string>
             {
                 {Region.UnitedStates, "us"},
@@ -235,12 +210,12 @@ namespace NgrokSharp
             if (string.IsNullOrWhiteSpace(startTunnelDto.name))
             {
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(startTunnelDto.name));
-            }   
+            }
             if (string.IsNullOrWhiteSpace(startTunnelDto.proto))
             {
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(startTunnelDto.proto));
             }
-            return await _httpClient.PostAsync($"{_ngrokLocalUrl}/tunnels", new StringContent(JsonSerializer.Serialize(startTunnelDto), Encoding.UTF8, "application/json"),cancellationToken);
+            return await _httpClient.PostAsync($"{_ngrokLocalUrl}/tunnels", new StringContent(JsonSerializer.Serialize(startTunnelDto), Encoding.UTF8, "application/json"), cancellationToken);
         }
 
         /// <summary>
@@ -255,9 +230,9 @@ namespace NgrokSharp
             {
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(name));
             }
-            return await _httpClient.DeleteAsync($"{_ngrokLocalUrl}/tunnels/{name}",cancellationToken);
+            return await _httpClient.DeleteAsync($"{_ngrokLocalUrl}/tunnels/{name}", cancellationToken);
         }
-        
+
         /// <summary>
         /// Returns a list of all HTTP requests captured for inspection. This will only return requests that are still in memory (ngrok evicts captured requests when their memory usage exceeds inspect_db_size) 
         /// </summary>
@@ -268,7 +243,7 @@ namespace NgrokSharp
         {
             return await _httpClient.GetAsync($"{_ngrokLocalUrl}/requests/http?limit={limit}", cancellationToken);
         }
-        
+
         /// <summary>
         /// Returns a list of all HTTP requests captured for inspection. This will only return requests that are still in memory (ngrok evicts captured requests when their memory usage exceeds inspect_db_size) 
         /// </summary>
@@ -282,13 +257,13 @@ namespace NgrokSharp
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(name));
             return await _httpClient.GetAsync($"{_ngrokLocalUrl}/requests/http?tunnel_name={name}&limit={limit}", cancellationToken);
         }
-        
+
         /// <summary>
         ///     Gets a list of the tunnels
         /// </summary>
         /// <returns>A httpResponseMessage, that can be parse into TunnelsDetailsDTO </returns>
-        public async Task<HttpResponseMessage> ListTunnelsAsync(CancellationToken cancellationToken = default) => await _httpClient.GetAsync($"{_ngrokLocalUrl}/tunnels",cancellationToken);
-        
+        public async Task<HttpResponseMessage> ListTunnelsAsync(CancellationToken cancellationToken = default) => await _httpClient.GetAsync($"{_ngrokLocalUrl}/tunnels", cancellationToken);
+
         /// <summary>
         /// Returns metadata and raw bytes of a captured request. The raw data is base64-encoded in the JSON response.
         /// </summary>
@@ -303,13 +278,13 @@ namespace NgrokSharp
 
             return await _httpClient.GetAsync($"{_ngrokLocalUrl}/requests/http/{requestId}", cancellationToken);
         }
-        
+
         /// <summary>
         /// Deletes all captured requests
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns>204 status code with no response body</returns>
-        public async Task<HttpResponseMessage> DeleteCapturedRequests(CancellationToken cancellationToken = default) => await _httpClient.DeleteAsync($"{_ngrokLocalUrl}/requests/http",cancellationToken);
+        public async Task<HttpResponseMessage> DeleteCapturedRequests(CancellationToken cancellationToken = default) => await _httpClient.DeleteAsync($"{_ngrokLocalUrl}/requests/http", cancellationToken);
 
         /// <summary>
         ///     Stops Ngrok

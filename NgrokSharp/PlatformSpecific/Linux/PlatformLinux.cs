@@ -9,22 +9,12 @@ namespace NgrokSharp.PlatformSpecific.Linux
 {
     public class PlatformLinux : PlatformStrategy
     {
-        public PlatformLinux()
+        public PlatformLinux(string downloadFolder, ILogger? logger = null) : base(downloadFolder, logger)
         {
-            _ngrokProcess = null;
-            _downloadFolder = $"{Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + Path.DirectorySeparatorChar}NgrokSharp{Path.DirectorySeparatorChar}";
-        }
-        
-        public PlatformLinux(ILogger logger)
-        {
-            _logger = logger;
-            _ngrokProcess = null;
-            _downloadFolder = $"{Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + Path.DirectorySeparatorChar}NgrokSharp{Path.DirectorySeparatorChar}";
         }
 
         public override async Task RegisterAuthTokenAsync(string authtoken)
         {
-            
             if(_ngrokProcess == null)
             {
                 using var registerProcess = new Process
@@ -119,6 +109,24 @@ namespace NgrokSharp.PlatformSpecific.Linux
             {
                 throw new Exception("The Ngrok process is already running. Please use StopNgrok() and then StartNgrok again.");
             }
+        }
+
+        public override void SetExecutionBit(string path)
+        {
+            // chown +x ngrok
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "chmod",
+                    Arguments = $"+x {path}",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
+            process.Start();
+            process.WaitForExit();
         }
     }
 }

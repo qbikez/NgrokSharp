@@ -18,7 +18,7 @@ namespace NgrokSharp.Tests
     {
         private readonly byte[] _ngrokBytes;
         private readonly string _ngrokYml = "authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-        private readonly string _downloadFolder = $"{Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + Path.DirectorySeparatorChar}NgrokSharp{Path.DirectorySeparatorChar}";
+        private readonly string _downloadFolder = NgrokManager.DefaultDownloadFolder();
         public static readonly HttpClient HttpClient = new HttpClient();
         ILogger<NgrokManagerUnitTest> _logger;
 
