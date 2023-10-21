@@ -1,12 +1,15 @@
 ﻿#pragma warning disable CS1591
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -51,9 +54,9 @@ namespace NgrokSharp
             _httpClient = new HttpClient();
             _ngrokLocalUrl = new Uri("http://localhost:4040/api");
             DownloadFolder = downloadFolder ?? DefaultDownloadFolder();
-            
+
             _ngrokDownloadUrl = GetDownloadUrl();
-            
+
             InitializePlatform();
         }
 
@@ -64,14 +67,16 @@ namespace NgrokSharp
         {
         }
 
-        public static string DefaultDownloadFolder() {
+        public static string DefaultDownloadFolder()
+        {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             if (string.IsNullOrEmpty(appData)) appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            
+
             return $"{appData}{Path.DirectorySeparatorChar}NgrokSharp{Path.DirectorySeparatorChar}";
         }
 
-        private static Uri? GetDownloadUrl() {
+        public static Uri? GetDownloadUrl()
+        {
             if (OperatingSystem.IsWindows())
             {
                 return new Uri("https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip");
@@ -133,7 +138,7 @@ namespace NgrokSharp
             InitializePlatform();
         }
 
-        private void InitializePlatform() 
+        private void InitializePlatform()
         {
             _platformCode = PlatformStrategy.Create(DownloadFolder, _logger);
         }
@@ -189,6 +194,30 @@ namespace NgrokSharp
             _platformCode.StartNgrokWithLogging(selectedRegion);
         }
 
+        public async Task<bool> WaitForNgrok(TimeSpan? timeout = null, CancellationToken cancellationToken = default)
+        {
+            timeout ??= TimeSpan.FromSeconds(4);
+            Stopwatch sw = Stopwatch.StartNew();
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    var url = $"{_ngrokLocalUrl.ToString()}/tunnels";
+
+                    var response = await _httpClient.GetAsync(url, cancellationToken);
+                    response.EnsureSuccessStatusCode();
+                    return true;
+                }
+                catch (Exception ex) when (ex is SocketException or HttpRequestException)
+                {
+                    if (sw.Elapsed > timeout) throw;
+                    await Task.Delay(100, cancellationToken);
+                }
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            return false;
+        }
+
         /// <summary>
         ///     Starts a Ngrok tunnel
         /// </summary>
@@ -215,9 +244,24 @@ namespace NgrokSharp
             {
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(startTunnelDto.proto));
             }
-            return await _httpClient.PostAsync($"{_ngrokLocalUrl}/tunnels", new StringContent(JsonSerializer.Serialize(startTunnelDto), Encoding.UTF8, "application/json"), cancellationToken);
-        }
 
+            var serialized = JsonSerializer.Serialize(startTunnelDto, new JsonSerializerOptions() {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            });
+
+            for(var retries = 3; retries >= 0; retries--) {
+            var response = await _httpClient.PostAsync($"{_ngrokLocalUrl.ToString()}/tunnels", new StringContent(serialized, Encoding.UTF8, "application/json"), cancellationToken);
+            if (response.IsSuccessStatusCode) return response;
+                if (retries > 0 && response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable) {
+                    await Task.Delay(200);
+                    continue;
+                }
+                var content = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"Failed to start tunnel: {response.StatusCode} {content}", null, response.StatusCode);        
+            }
+
+            throw new Exception("failed to start tunnel");
+        }
         /// <summary>
         ///     Stops a ngrok tunnel
         /// </summary>
