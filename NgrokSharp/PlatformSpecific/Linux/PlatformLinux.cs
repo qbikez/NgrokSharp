@@ -49,7 +49,7 @@ namespace NgrokSharp.PlatformSpecific.Linux
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     FileName = $"{_downloadFolder}ngrok",
-                    Arguments = $"start --none -region {region}"
+                    Arguments = $"start --none --region {region}"
                 };
                 try
                 {
@@ -83,7 +83,7 @@ namespace NgrokSharp.PlatformSpecific.Linux
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     FileName = $"{_downloadFolder}ngrok",
-                    Arguments = $"start --none -region {region} --log=stdout"
+                    Arguments = $"start --none --region {region} --log=stdout"
                 };
                 try
                 {
@@ -118,8 +118,8 @@ namespace NgrokSharp.PlatformSpecific.Linux
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = "chmod",
-                    Arguments = $"+x {path}",
+                    FileName = "/bin/bash",
+                    Arguments = $"-c \"chmod +x {path}\"",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     CreateNoWindow = true
