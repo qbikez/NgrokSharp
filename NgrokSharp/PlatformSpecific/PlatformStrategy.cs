@@ -124,7 +124,7 @@ namespace NgrokSharp.PlatformSpecific
                     valueBuilder.Append(c);
                 }
 
-                result.Add(keyBuilder.ToString(), valueBuilder.ToString());
+                result[keyBuilder.ToString()] = valueBuilder.ToString();
             }
             return result;
         }
