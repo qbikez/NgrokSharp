@@ -23,7 +23,6 @@ authtoken: """"
 ";
         private readonly string _downloadFolder = NgrokManager.DefaultDownloadFolder();
         public static readonly HttpClient HttpClient = new HttpClient();
-        ILogger<NgrokManagerUnitTest> _logger;
         private NgrokManager ngrokManager;
 
         public NgrokTunnelTests()
@@ -31,11 +30,11 @@ authtoken: """"
             EnsureNgrokBinary();
 
             var loggerFactory = LoggerFactory.Create(builder =>
-                {
-                    builder.AddFile("app.log");
-                });
+            {
+                builder.AddFile("ngrok.log");
+            });
 
-            ngrokManager = new NgrokManager(loggerFactory.CreateLogger<NgrokManagerUnitTest>());
+            ngrokManager = new NgrokManager(loggerFactory.CreateLogger<NgrokManager>());
 
             ngrokManager.StartNgrokWithLogging();
             ngrokManager.WaitForNgrok().ConfigureAwait(false).GetAwaiter().GetResult();
@@ -113,10 +112,6 @@ authtoken: """"
         [InlineData("in", "India")]
         public async Task StartTunnel_TestOptionalRegions_True(string regionNameShort, string regionNameFull)
         {
-            // ARRANGE
-            EnsureNgrokBinary();
-            SetNgrokYml();
-
             var region = (NgrokManager.Region)Enum.Parse(typeof(NgrokManager.Region), regionNameFull, true);
 
             using var ngrokManager = new NgrokManager();
@@ -145,29 +140,9 @@ authtoken: """"
             Assert.NotEmpty(tunnelDetail.PublicUrl.ToString());
         }
 
-        private DirectoryInfo SetNgrokYml()
-        {
-            var path = Directory.CreateDirectory(
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ngrok2"));
-
-            File.WriteAllText($"{path.FullName + Path.DirectorySeparatorChar}ngrok.yml", _ngrokYml);
-
-            return path;
-        }
-
-
         [Fact]
         public async Task StartTunnel_MissingAddrArgumentNullException_True()
         {
-            // ARRANGE
-            EnsureNgrokBinary();
-            SetNgrokYml();
-
-            using var ngrokManager = new NgrokManager();
-            // ACT
-            ngrokManager.StartNgrok();
-            await ngrokManager.WaitForNgrok();
-
             var startTunnelDto = new StartTunnelDTO
             {
                 name = "foundryvtt",
