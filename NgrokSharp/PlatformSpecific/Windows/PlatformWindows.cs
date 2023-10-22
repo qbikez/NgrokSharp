@@ -13,6 +13,8 @@ namespace NgrokSharp.PlatformSpecific.Windows
         {
         }
 
+        public override string BinaryPath => $"{DownloadFolder}ngrok.exe";
+
         public override async Task RegisterAuthTokenAsync(string authtoken)
         {
             if (_ngrokProcess == null)
@@ -22,7 +24,7 @@ namespace NgrokSharp.PlatformSpecific.Windows
                 {
                     CreateNoWindow = true,
                     WindowStyle = ProcessWindowStyle.Hidden,
-                    FileName = $"{_downloadFolder}ngrok.exe",
+                    FileName = BinaryPath,
                     Arguments = $"authtoken {authtoken}"
                 };
                 registerProcess.Start();
@@ -50,7 +52,7 @@ namespace NgrokSharp.PlatformSpecific.Windows
                     RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true,
-                    FileName = $"{_downloadFolder}ngrok.exe",
+                    FileName = BinaryPath,
                     Arguments = $"start --none -region {region}"
                 };
                 try
@@ -85,7 +87,7 @@ namespace NgrokSharp.PlatformSpecific.Windows
                     RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true,
-                    FileName = $"{_downloadFolder}ngrok.exe",
+                    FileName = BinaryPath,
                     Arguments = $"start --none -region {region} --log=stdout"
                 };
                 try

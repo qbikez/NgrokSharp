@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using static System.Environment;
 #pragma warning disable CS1591
 
 namespace NgrokSharp.PlatformSpecific
@@ -14,7 +15,10 @@ namespace NgrokSharp.PlatformSpecific
     {
         protected Process _ngrokProcess;
         protected ILogger? _logger;
-        protected string _downloadFolder;
+        public string DownloadFolder { get; private init; }
+        public abstract string BinaryPath {get; }
+        public string ConfigFile => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ngrok2", "ngrok.yml");
+
         public abstract Task RegisterAuthTokenAsync(string authtoken);
         public abstract void StartNgrok(string region);
         public abstract void StartNgrokWithLogging(string region);
@@ -23,7 +27,7 @@ namespace NgrokSharp.PlatformSpecific
         {
             _logger = logger;
             _ngrokProcess = null;
-            _downloadFolder = downloadFolder;
+            DownloadFolder = downloadFolder;
         }
 
         public void StopNgrok()
@@ -36,11 +40,12 @@ namespace NgrokSharp.PlatformSpecific
                     _ngrokProcess.Kill();
                     _ngrokProcess.Close();
                 }
+                _ngrokProcess?.Dispose();
                 _ngrokProcess = null;
             }
         }
 
-        public void Dispose() => _ngrokProcess.Dispose();
+        public void Dispose() => _ngrokProcess?.Dispose();
 
         protected void ProcessStandardError(object sender, DataReceivedEventArgs args)
         {

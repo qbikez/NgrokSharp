@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -9,6 +10,8 @@ namespace NgrokSharp.PlatformSpecific.Linux
 {
     public class PlatformLinux : PlatformStrategy
     {
+        public override string BinaryPath => $"{DownloadFolder}ngrok";
+
         public PlatformLinux(string downloadFolder, ILogger? logger = null) : base(downloadFolder, logger)
         {
         }
@@ -17,14 +20,18 @@ namespace NgrokSharp.PlatformSpecific.Linux
         {
             if(_ngrokProcess == null)
             {
+                if (!File.Exists(ConfigFile))
+                {
+                    await File.WriteAllTextAsync(ConfigFile, "authtoken:");
+                }
                 using var registerProcess = new Process
                 {
                     StartInfo = new ProcessStartInfo()
                     {
                         CreateNoWindow = true,
                         WindowStyle = ProcessWindowStyle.Hidden,
-                        FileName = $"{_downloadFolder}ngrok",
-                        Arguments = $"authtoken {authtoken}"
+                        FileName = BinaryPath,
+                        Arguments = $"config add-authtoken {authtoken}"
                     }
                 };
                 registerProcess.Start();
@@ -48,7 +55,7 @@ namespace NgrokSharp.PlatformSpecific.Linux
                     RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true,
-                    FileName = $"{_downloadFolder}ngrok",
+                    FileName = BinaryPath,
                     Arguments = $"start --none --region {region}"
                 };
                 try
@@ -82,7 +89,7 @@ namespace NgrokSharp.PlatformSpecific.Linux
                     RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true,
-                    FileName = $"{_downloadFolder}ngrok",
+                    FileName = BinaryPath,
                     Arguments = $"start --none --region {region} --log=stdout"
                 };
                 try

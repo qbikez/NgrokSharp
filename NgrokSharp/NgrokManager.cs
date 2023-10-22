@@ -245,19 +245,22 @@ namespace NgrokSharp
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(startTunnelDto.proto));
             }
 
-            var serialized = JsonSerializer.Serialize(startTunnelDto, new JsonSerializerOptions() {
+            var serialized = JsonSerializer.Serialize(startTunnelDto, new JsonSerializerOptions()
+            {
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
             });
 
-            for(var retries = 3; retries >= 0; retries--) {
-            var response = await _httpClient.PostAsync($"{_ngrokLocalUrl.ToString()}/tunnels", new StringContent(serialized, Encoding.UTF8, "application/json"), cancellationToken);
-            if (response.IsSuccessStatusCode) return response;
-                if (retries > 0 && response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable) {
+            for (var retries = 5; retries >= 0; retries--)
+            {
+                var response = await _httpClient.PostAsync($"{_ngrokLocalUrl.ToString()}/tunnels", new StringContent(serialized, Encoding.UTF8, "application/json"), cancellationToken);
+                if (response.IsSuccessStatusCode) return response;
+                if (retries > 0 && response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
+                {
                     await Task.Delay(200);
                     continue;
                 }
                 var content = await response.Content.ReadAsStringAsync();
-                throw new HttpRequestException($"Failed to start tunnel: {response.StatusCode} {content}", null, response.StatusCode);        
+                throw new HttpRequestException($"Failed to start tunnel: {response.StatusCode} {content}", null, response.StatusCode);
             }
 
             throw new Exception("failed to start tunnel");

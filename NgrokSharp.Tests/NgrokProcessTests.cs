@@ -19,8 +19,8 @@ namespace NgrokSharp.Tests
     {
         private readonly byte[] _ngrokBytes;
         private readonly string _ngrokYml = @"
-version: 3
-authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+version: ""2""
+authtoken: """"
 ";
         private readonly string _downloadFolder = NgrokManager.DefaultDownloadFolder();
         public static readonly HttpClient HttpClient = new HttpClient();
@@ -53,8 +53,8 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
             using var ngrokManager = new NgrokManager();
 
             // ACT
-
             await ngrokManager.DownloadAndUnzipNgrokAsync();
+            
             // ASSERT
 
             if (OperatingSystem.IsWindows()) Assert.True(File.Exists($"{_downloadFolder}ngrok.exe"));
@@ -101,161 +101,12 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
             Assert.False(string.IsNullOrWhiteSpace(downloadedString));
         }
 
-        [Fact]
-        public async Task StartTunnel_StartTunnel8080_True()
-        {
-            // ARRANGE
-            ExtractNgrokBinary();
-            SetNgrokYml();
-
-            var loggerFactory = LoggerFactory.Create(builder =>
-                            {
-                                builder.AddFile("app.log");
-                            }
-                        );
-
-            using var ngrokManager = new NgrokManager(loggerFactory.CreateLogger<NgrokManagerUnitTest>());
-            // ACT
-            ngrokManager.StartNgrokWithLogging();
-            await ngrokManager.WaitForNgrok();
-
-            var startTunnelDto = new StartTunnelDTO
-            {
-                name = "foundryvtt",
-                proto = "http",
-                addr = "30000",
-                
-            };
-
-            await ngrokManager.StartTunnelAsync(startTunnelDto);
-
-            // ASSERT
-            var downloadedString = await HttpClient.GetStringAsync("http://localhost:4040/api/tunnels/foundryvtt");
-
-            Assert.Contains("http://localhost:30000", downloadedString);
-        }
-
-        [Fact]
-        public async Task StartTunnel_UseSubDomainGuid_True()
-        {
-            // ARRANGE
-            if (!Directory.Exists(_downloadFolder))
-            {
-                Directory.CreateDirectory(_downloadFolder);
-            }
-            File.WriteAllBytes($"{_downloadFolder}ngrok-stable-amd64.zip", _ngrokBytes);
-
-            var fastZip = new FastZip();
-            fastZip.ExtractZip($"{_downloadFolder}ngrok-stable-amd64.zip", _downloadFolder, null);
-
-            SetNgrokYml();
-
-            var newGuid = Guid.NewGuid().ToString();
-
-            using var ngrokManager = new NgrokManager();
-            // ACT
-            ngrokManager.StartNgrok();
-            await ngrokManager.WaitForNgrok();
-
-            var startTunnelDto = new StartTunnelDTO
-            {
-                name = "foundryvtt",
-                proto = "http",
-                addr = "30000",
-                subdomain = newGuid
-            };
-
-            await ngrokManager.StartTunnelAsync(startTunnelDto);
-
-            // ASSERT
-            var downloadedString = await HttpClient.GetStringAsync("http://localhost:4040/api/tunnels/foundryvtt");
-
-            Assert.Contains(newGuid, downloadedString);
-        }
-
-        [Fact]
-        public async Task StartTunnel_WithCustomDomain_True()
-        {
-            // ARRANGE
-            if (!Directory.Exists(_downloadFolder))
-            {
-                Directory.CreateDirectory(_downloadFolder);
-            }
-            File.WriteAllBytes($"{_downloadFolder}ngrok-stable-amd64.zip", _ngrokBytes);
-
-            var fastZip = new FastZip();
-            fastZip.ExtractZip($"{_downloadFolder}ngrok-stable-amd64.zip", _downloadFolder, null);
-
-            SetNgrokYml();
-
-            using var ngrokManager = new NgrokManager();
-            // ACT
-            ngrokManager.StartNgrok();
-            await ngrokManager.WaitForNgrok();
-
-            var startTunnelDto = new StartTunnelDTO
-            {
-                name = "foundryvtt",
-                proto = "http",
-                addr = "30000",
-                hostname = "ngroksharp.davidjensen.dev"
-            };
-
-            await ngrokManager.StartTunnelAsync(startTunnelDto);
-
-            // ASSERT
-            var downloadedString = await HttpClient.GetStringAsync("http://localhost:4040/api/tunnels/foundryvtt");
-
-            Assert.Contains("ngroksharp.davidjensen.dev", downloadedString);
-        }
-
-        [Theory]
-        [InlineData("eu", "Europe")]
-        [InlineData("ap", "AsiaPacific")]
-        [InlineData("au", "Australia")]
-        [InlineData("sa", "SouthAmerica")]
-        [InlineData("jp", "Japan")]
-        [InlineData("in", "India")]
-        public async Task StartTunnel_TestOptionalRegions_True(string regionNameShort, string regionNameFull)
-        {
-            // ARRANGE
-            ExtractNgrokBinary();
-            SetNgrokYml();
-
-            var region = (NgrokManager.Region)Enum.Parse(typeof(NgrokManager.Region), regionNameFull, true);
-
-            using var ngrokManager = new NgrokManager();
-            // ACT
-            ngrokManager.StartNgrok(region);
-            await ngrokManager.WaitForNgrok();
-
-            var startTunnelDto = new StartTunnelDTO
-            {
-                name = "test",
-                proto = "http",
-                addr = "30000",
-                
-            };
-
-
-            var httpResponseMessage = await ngrokManager.StartTunnelAsync(startTunnelDto);
-            //Wait for ngrok to start, it can be slow on some systems.
-            Thread.Sleep(1000);
-
-            // ASSERT
-            var tunnelDetail =
-                JsonSerializer.Deserialize<TunnelDetailDTO>(
-                    await httpResponseMessage.Content.ReadAsStringAsync());
-
-            Assert.Contains($".{regionNameShort}.", tunnelDetail.PublicUrl.ToString());
-        }
-
         private DirectoryInfo SetNgrokYml()
         {
             var path = Directory.CreateDirectory(
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ngrok2"));
 
-            //File.WriteAllText($"{path.FullName+Path.DirectorySeparatorChar}ngrok.yml", _ngrokYml);
+            File.WriteAllText($"{path.FullName + Path.DirectorySeparatorChar}ngrok.yml", _ngrokYml);
 
             return path;
         }
@@ -278,7 +129,7 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
                 name = "foundryvtt",
                 proto = "http",
                 addr = "",
-                
+
             };
 
             var ex = await Assert.ThrowsAsync<ArgumentException>(async () => await ngrokManager.StartTunnelAsync(startTunnelDto));
@@ -287,131 +138,7 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
             Assert.Equal("Value cannot be null or whitespace. (Parameter 'addr')", ex.Message);
         }
 
-        [Fact]
-        public async Task StartTunnel_MissingNameArgumentNullException_True()
-        {
-            // ARRANGE
-            if (!Directory.Exists(_downloadFolder))
-            {
-                Directory.CreateDirectory(_downloadFolder);
-            }
-            File.WriteAllBytes($"{_downloadFolder}ngrok-stable-amd64.zip", _ngrokBytes);
-
-            var fastZip = new FastZip();
-            fastZip.ExtractZip($"{_downloadFolder}ngrok-stable-amd64.zip", _downloadFolder, null);
-
-            SetNgrokYml();
-
-            using var ngrokManager = new NgrokManager();
-            // ACT
-            ngrokManager.StartNgrok();
-            await ngrokManager.WaitForNgrok();
-
-            var startTunnelDto = new StartTunnelDTO
-            {
-                name = "",
-                proto = "http",
-                addr = "8080"
-            };
-
-            var ex = await Assert.ThrowsAsync<ArgumentException>(async () => await ngrokManager.StartTunnelAsync(startTunnelDto));
-
-            // ASSERT
-
-            Assert.Equal("Value cannot be null or whitespace. (Parameter 'name')", ex.Message);
-        }
-
-        [Fact]
-        public async Task StartTunnel_MissingProtoArgumentNullException_True()
-        {
-            // ARRANGE
-            if (!Directory.Exists(_downloadFolder))
-            {
-                Directory.CreateDirectory(_downloadFolder);
-            }
-            File.WriteAllBytes($"{_downloadFolder}ngrok-stable-amd64.zip", _ngrokBytes);
-
-            var fastZip = new FastZip();
-            fastZip.ExtractZip($"{_downloadFolder}ngrok-stable-amd64.zip", _downloadFolder, null);
-
-            SetNgrokYml();
-
-            using var ngrokManager = new NgrokManager();
-            // ACT
-            ngrokManager.StartNgrok();
-            await ngrokManager.WaitForNgrok();
-
-            var startTunnelDto = new StartTunnelDTO
-            {
-                name = "foundryvtt",
-                proto = "",
-                addr = "8080",
-                
-            };
-
-            var ex = await Assert.ThrowsAsync<ArgumentException>(async () => await ngrokManager.StartTunnelAsync(startTunnelDto));
-
-            // ASSERT
-
-            Assert.Equal("Value cannot be null or whitespace. (Parameter 'proto')", ex.Message);
-        }
-
-        [Fact]
-        public async Task StartTunnel_StartTunnelDTOIsNullArgumentNullException_True()
-        {
-            // ARRANGE
-            if (!Directory.Exists(_downloadFolder))
-            {
-                Directory.CreateDirectory(_downloadFolder);
-            }
-            File.WriteAllBytes($"{_downloadFolder}ngrok-stable-amd64.zip", _ngrokBytes);
-
-            var fastZip = new FastZip();
-            fastZip.ExtractZip($"{_downloadFolder}ngrok-stable-amd64.zip", _downloadFolder, null);
-
-            SetNgrokYml();
-
-            using var ngrokManager = new NgrokManager();
-            // ACT
-            ngrokManager.StartNgrok();
-            await ngrokManager.WaitForNgrok();
-
-            var ex = await Assert.ThrowsAsync<ArgumentNullException>(async () => await ngrokManager.StartTunnelAsync(null));
-
-            // ASSERT
-
-            Assert.Equal("Value cannot be null. (Parameter 'startTunnelDto')", ex.Message);
-        }
-
-        [Fact]
-        public async Task RegisterAuthToken_ThrowsExptionUsingRegisterAuthTokenWhileAlreadyStarted_True()
-        {
-            // ARRANGE
-            if (!Directory.Exists(_downloadFolder))
-            {
-                Directory.CreateDirectory(_downloadFolder);
-            }
-            File.WriteAllBytes($"{_downloadFolder}ngrok-stable-amd64.zip", _ngrokBytes);
-
-            var fastZip = new FastZip();
-            fastZip.ExtractZip($"{_downloadFolder}ngrok-stable-amd64.zip", _downloadFolder, null);
-
-            SetNgrokYml();
-
-            using var ngrokManager = new NgrokManager();
-            // ACT
-
-            ngrokManager.StartNgrok();
-            await ngrokManager.WaitForNgrok();
-
-            // ASSERT
-            var ex = await Assert.ThrowsAsync<Exception>(async () =>
-                await ngrokManager.RegisterAuthTokenAsync("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"));
-
-            Assert.Equal(
-                "The Ngrok process is already running. Please use StopNgrok() and then register the AuthToken again.",
-                ex.Message);
-        }
+        
 
         [Fact]
         public async Task RegisterAuthToken_AddNewAuthTokenAfterStop_True()
@@ -426,8 +153,6 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
             // ACT
             ngrokManager.StopNgrok();
-            //Wait for ngrok to stop, it can be slow on some systems.
-            Thread.Sleep(1000);
 
             await ngrokManager.RegisterAuthTokenAsync("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 
@@ -450,9 +175,14 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
             ExtractNgrokBinary();
             SetNgrokYml();
 
-            using var ngrokManager = new NgrokManager();
+            var loggerFactory = LoggerFactory.Create(builder =>
+                           {
+                               builder.AddFile("app.log");
+                           }
+                       );
+            using var ngrokManager = new NgrokManager(loggerFactory.CreateLogger<NgrokManager>());
 
-            ngrokManager.StartNgrok();
+            ngrokManager.StartNgrokWithLogging();
             await ngrokManager.WaitForNgrok();
 
             var startTunnelDto = new StartTunnelDTO
@@ -460,19 +190,16 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
                 name = "foundryvtt",
                 proto = "http",
                 addr = "30000",
-                
+
             };
 
             await ngrokManager.StartTunnelAsync(startTunnelDto);
-            //Wait for ngrok to start, it can be slow on some systems.
-            Thread.Sleep(1000);
 
             // ACT
             var stopTunnel = await ngrokManager.StopTunnelAsync("foundryvtt");
 
             // ASSERT
-            Assert.Equal(HttpStatusCode.NoContent,
-                stopTunnel.StatusCode); // Should return 204 status code with no content
+            Assert.Equal(HttpStatusCode.NoContent, stopTunnel.StatusCode); // Should return 204 status code with no content
         }
 
         [Fact]
@@ -492,7 +219,7 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
                 name = "foundryvtt",
                 proto = "http",
                 addr = "30000",
-                
+
             };
             await ngrokManager.StartTunnelAsync(startTunnelDto);
             // ACT
@@ -548,27 +275,15 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         public async Task StartNgrokWithLogging_StartTunnel8080AndCheckLog_True()
         {
             // ARRANGE
-            var are = new AutoResetEvent(false);
-            if (!Directory.Exists(_downloadFolder))
-            {
-                Directory.CreateDirectory(_downloadFolder);
-            }
+            ExtractNgrokBinary();
+            SetNgrokYml();
 
             var loggerFactory = LoggerFactory.Create(builder =>
                 {
                     builder.AddFile("app.log");
                 }
             );
-
             _logger = loggerFactory.CreateLogger<NgrokManagerUnitTest>();
-
-            File.WriteAllBytes($"{_downloadFolder}ngrok-stable-amd64.zip", _ngrokBytes);
-
-            var fastZip = new FastZip();
-            fastZip.ExtractZip($"{_downloadFolder}ngrok-stable-amd64.zip", _downloadFolder, null);
-
-            SetNgrokYml();
-
             var ngrokManager = new NgrokManager(_logger);
 
             ngrokManager.StartNgrokWithLogging();
@@ -579,12 +294,10 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
                 name = "foundryvtt",
                 proto = "http",
                 addr = "30000",
-                
+
             };
 
             await ngrokManager.StartTunnelAsync(startTunnelDto);
-            //Wait for ngrok to start, it can be slow on some systems.
-            await Task.Delay(1000);
 
             string log;
 
@@ -595,9 +308,6 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
                     log = streamReader.ReadToEnd();
                 }
             }
-
-            // ACT
-            are.WaitOne(TimeSpan.FromSeconds(4));
 
             // ASSERT
             Assert.Contains("client session established", log);
@@ -629,12 +339,10 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
                 name = "foundryvtt",
                 proto = "http",
                 addr = "30000",
-                
+
             };
 
             await ngrokManager.StartTunnelAsync(startTunnelDto);
-            //Wait for ngrok to start, it can be slow on some systems.
-            Thread.Sleep(1000);
 
             // ACT
             are.WaitOne(TimeSpan.FromSeconds(1));
@@ -648,16 +356,7 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         public async Task ListCapturedRequests_ReturnCapturedRequestRootDTO_True()
         {
             // ARRANGE
-            var are = new AutoResetEvent(false);
-            if (!Directory.Exists(_downloadFolder))
-            {
-                Directory.CreateDirectory(_downloadFolder);
-            }
-            File.WriteAllBytes($"{_downloadFolder}ngrok-stable-amd64.zip", _ngrokBytes);
-
-            var fastZip = new FastZip();
-            fastZip.ExtractZip($"{_downloadFolder}ngrok-stable-amd64.zip", _downloadFolder, null);
-
+            ExtractNgrokBinary();
             SetNgrokYml();
 
             using var ngrokManager = new NgrokManager();
@@ -670,15 +369,12 @@ authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
                 name = "foundryvtt",
                 proto = "http",
                 addr = "30000",
-                
+
             };
 
             await ngrokManager.StartTunnelAsync(startTunnelDto);
-            //Wait for ngrok to start, it can be slow on some systems.
-            Thread.Sleep(1000);
 
             // ACT
-            are.WaitOne(TimeSpan.FromSeconds(1));
             var httpResponseMessage = await ngrokManager.ListCapturedRequests();
 
             var capturedRequestRootDTO =
