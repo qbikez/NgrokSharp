@@ -10,7 +10,7 @@ namespace NgrokSharp
 {
     public interface INgrokManager : IDisposable
     {
-        Task DownloadAndUnzipNgrokAsync(CancellationToken cancellationToken = default);
+        Task DownloadAndUnzipNgrokAsync(bool force, CancellationToken cancellationToken = default);
         /// <summary>
         ///     Registers your authtoken, if empty your sessions will be restricted to 2 hours.
         /// </summary>

@@ -96,25 +96,27 @@ namespace NgrokSharp
         /// <summary>
         ///     Downloads Ngrok.
         /// </summary>
-        public async Task DownloadAndUnzipNgrokAsync(CancellationToken cancellationToken = default)
+        public async Task DownloadAndUnzipNgrokAsync(bool force = false, CancellationToken cancellationToken = default)
         {
+            if (!force && File.Exists(_platformCode.BinaryPath)) return;
+
             var httpResponseMessage = await _httpClient.GetAsync(_ngrokDownloadUrl, cancellationToken);
             httpResponseMessage.EnsureSuccessStatusCode();
 
             var readAsStreamAsync = await httpResponseMessage.Content.ReadAsStreamAsync();
-            await using (var writer = File.Create($"{DownloadFolder}ngrok-stable-amd64.zip"))
+            await using (var writer = File.Create($"{DownloadFolder}ngrok-stable.zip"))
             {
                 await readAsStreamAsync.CopyToAsync(writer, cancellationToken);
             }
 
-            await Task.Run(() => ZipFile.ExtractToDirectory($"{DownloadFolder}ngrok-stable-amd64.zip", DownloadFolder, true));
+            await Task.Run(() => ZipFile.ExtractToDirectory($"{DownloadFolder}ngrok-stable.zip", DownloadFolder, true));
 
-            if (File.Exists($"{DownloadFolder}ngrok-stable-amd64.zip"))
+            if (File.Exists($"{DownloadFolder}ngrok-stable.zip"))
             {
-                File.Delete($"{DownloadFolder}ngrok-stable-amd64.zip");
+                File.Delete($"{DownloadFolder}ngrok-stable.zip");
             }
 
-            _platformCode.SetExecutionBit($"{DownloadFolder}ngrok");
+            _platformCode.SetExecutionBit(_platformCode.BinaryPath);
         }
 
         /// <summary>
