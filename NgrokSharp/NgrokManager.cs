@@ -38,9 +38,11 @@ namespace NgrokSharp
 
         private readonly HttpClient _httpClient;
         private readonly Uri _ngrokDownloadUrl;
-        private readonly Uri _ngrokLocalUrl;
+        private Uri _ngrokLocalUrl;
         private ILogger? _logger;
         private PlatformStrategy _platformCode;
+
+        public PlatformStrategy Platform => _platformCode;
 
         public string DownloadFolder { get; private set; }
 
@@ -52,7 +54,7 @@ namespace NgrokSharp
             _logger = logger;
 
             _httpClient = new HttpClient();
-            _ngrokLocalUrl = new Uri("http://localhost:4040/api");
+            _ngrokLocalUrl = new Uri("http://localhost:4040/");
             DownloadFolder = downloadFolder ?? DefaultDownloadFolder();
 
             _ngrokDownloadUrl = GetDownloadUrl();
@@ -79,11 +81,11 @@ namespace NgrokSharp
         {
             if (OperatingSystem.IsWindows())
             {
-                return new Uri("https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip");
+                return new Uri("https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip");
             }
             if (OperatingSystem.IsLinux())
             {
-                return new Uri("https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip");
+                return new Uri("https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.zip");
             }
             if (OperatingSystem.IsMacOS())
             {
@@ -143,6 +145,11 @@ namespace NgrokSharp
         private void InitializePlatform()
         {
             _platformCode = PlatformStrategy.Create(DownloadFolder, _logger);
+            //_platformCode.UrlChanged += (url) => _ngrokLocalUrl = new Uri("http://" + url);
+            if (!Directory.Exists(DownloadFolder))
+            {
+                Directory.CreateDirectory(DownloadFolder);
+            }
         }
 
         /// <summary>
@@ -204,7 +211,7 @@ namespace NgrokSharp
             {
                 try
                 {
-                    var url = $"{_ngrokLocalUrl.ToString()}/tunnels";
+                    var url = $"{_ngrokLocalUrl.ToString()}api/tunnels";
 
                     var response = await _httpClient.GetAsync(url, cancellationToken);
                     response.EnsureSuccessStatusCode();
@@ -247,14 +254,21 @@ namespace NgrokSharp
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(startTunnelDto.proto));
             }
 
-            var serialized = JsonSerializer.Serialize(startTunnelDto, new JsonSerializerOptions()
-            {
+            var serialized = JsonSerializer.Serialize(startTunnelDto, new JsonSerializerOptions() {
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
             });
 
             for (var retries = 5; retries >= 0; retries--)
             {
-                var response = await _httpClient.PostAsync($"{_ngrokLocalUrl.ToString()}/tunnels", new StringContent(serialized, Encoding.UTF8, "application/json"), cancellationToken);
+                HttpResponseMessage response;
+                try
+                {
+                    response = await _httpClient.PostAsync($"{_ngrokLocalUrl.ToString()}api/tunnels", new StringContent(serialized, Encoding.UTF8, "application/json"), cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    throw;
+                }
                 if (response.IsSuccessStatusCode) return response;
                 if (retries > 0 && response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
                 {
@@ -279,7 +293,7 @@ namespace NgrokSharp
             {
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(name));
             }
-            return await _httpClient.DeleteAsync($"{_ngrokLocalUrl}/tunnels/{name}", cancellationToken);
+            return await _httpClient.DeleteAsync($"{_ngrokLocalUrl}api/tunnels/{name}", cancellationToken);
         }
 
         /// <summary>
@@ -290,7 +304,7 @@ namespace NgrokSharp
         /// <returns> A HttpResponseMessage that can be parsed into a CapturedRequestRootDTO</returns>
         public async Task<HttpResponseMessage> ListCapturedRequests(uint limit = 50, CancellationToken cancellationToken = default)
         {
-            return await _httpClient.GetAsync($"{_ngrokLocalUrl}/requests/http?limit={limit}", cancellationToken);
+            return await _httpClient.GetAsync($"{_ngrokLocalUrl}api/requests/http?limit={limit}", cancellationToken);
         }
 
         /// <summary>
@@ -304,14 +318,14 @@ namespace NgrokSharp
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(name));
-            return await _httpClient.GetAsync($"{_ngrokLocalUrl}/requests/http?tunnel_name={name}&limit={limit}", cancellationToken);
+            return await _httpClient.GetAsync($"{_ngrokLocalUrl}api/requests/http?tunnel_name={name}&limit={limit}", cancellationToken);
         }
 
         /// <summary>
         ///     Gets a list of the tunnels
         /// </summary>
         /// <returns>A httpResponseMessage, that can be parse into TunnelsDetailsDTO </returns>
-        public async Task<HttpResponseMessage> ListTunnelsAsync(CancellationToken cancellationToken = default) => await _httpClient.GetAsync($"{_ngrokLocalUrl}/tunnels", cancellationToken);
+        public async Task<HttpResponseMessage> ListTunnelsAsync(CancellationToken cancellationToken = default) => await _httpClient.GetAsync($"{_ngrokLocalUrl}api/tunnels", cancellationToken);
 
         /// <summary>
         /// Returns metadata and raw bytes of a captured request. The raw data is base64-encoded in the JSON response.
@@ -325,7 +339,7 @@ namespace NgrokSharp
             if (string.IsNullOrWhiteSpace(requestId))
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(requestId));
 
-            return await _httpClient.GetAsync($"{_ngrokLocalUrl}/requests/http/{requestId}", cancellationToken);
+            return await _httpClient.GetAsync($"{_ngrokLocalUrl}api/requests/http/{requestId}", cancellationToken);
         }
 
         /// <summary>
@@ -333,7 +347,7 @@ namespace NgrokSharp
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns>204 status code with no response body</returns>
-        public async Task<HttpResponseMessage> DeleteCapturedRequests(CancellationToken cancellationToken = default) => await _httpClient.DeleteAsync($"{_ngrokLocalUrl}/requests/http", cancellationToken);
+        public async Task<HttpResponseMessage> DeleteCapturedRequests(CancellationToken cancellationToken = default) => await _httpClient.DeleteAsync($"{_ngrokLocalUrl}api/requests/http", cancellationToken);
 
         /// <summary>
         ///     Stops Ngrok

@@ -1,0 +1,220 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>NgrokSharp</name>
+    </assembly>
+    <members>
+        <member name="M:NgrokSharp.INgrokManager.RegisterAuthTokenAsync(System.String)">
+            <summary>
+                Registers your authtoken, if empty your sessions will be restricted to 2 hours.
+            </summary>
+            <param name="authtoken">The token</param>
+        </member>
+        <member name="M:NgrokSharp.INgrokManager.StartNgrok(NgrokSharp.NgrokManager.Region)">
+            <summary>
+                Starts Ngrok
+            </summary>
+            <param name="region">DataCenter region</param>
+        </member>
+        <member name="M:NgrokSharp.INgrokManager.StartNgrokWithLogging(NgrokSharp.NgrokManager.Region)">
+            <summary>
+            Only use this if you passed ILogger into the constructor
+            </summary>
+            <param name="region">DataCenter region</param>
+        </member>
+        <member name="M:NgrokSharp.INgrokManager.SetNgrokDirectory(System.String,Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Sets the path to a directory that contains the Ngrok executable. Only use this method you don't wish NgrokSharp to manage the ngrok executable. <see cref="M:NgrokSharp.INgrokManager.DownloadAndUnzipNgrokAsync(System.Boolean,System.Threading.CancellationToken)"/>  
+            </summary>
+            <param name="pathToExecutable">Path to a directory that contains the Ngrok executable</param>
+            <param name="logger"></param>
+        </member>
+        <member name="M:NgrokSharp.INgrokManager.SetNgrokDirectory(System.String)">
+            <summary>
+            Sets the path to a directory that contains the Ngrok executable. Only use this method you don't wish NgrokSharp to manage the ngrok executable. <see cref="M:NgrokSharp.INgrokManager.DownloadAndUnzipNgrokAsync(System.Boolean,System.Threading.CancellationToken)"/>  
+            </summary>
+            <param name="pathToExecutable">Path to a directory that contains the Ngrok executable</param>
+        </member>
+        <member name="M:NgrokSharp.INgrokManager.StopNgrok">
+            <summary>
+                Stops Ngrok
+            </summary>
+        </member>
+        <member name="M:NgrokSharp.INgrokManager.StartTunnelAsync(NgrokSharp.DTO.StartTunnelDTO,System.Threading.CancellationToken)">
+            <summary>
+                Starts a Ngrok tunnel
+            </summary>
+            <param name="startTunnelDto"></param>
+            <param name="cancellationToken"></param>
+            <returns>A httpResponseMessage that can be parse into TunnelDetailDTO</returns>
+            <exception cref="T:System.ArgumentNullException">The input, can't be null</exception>
+            <exception cref="T:System.ArgumentException">Missing values in input</exception>
+        </member>
+        <member name="M:NgrokSharp.INgrokManager.StopTunnelAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+                Stops a ngrok tunnel
+            </summary>
+            <param name="name">Name of the tunnel to stop</param>
+            <param name="cancellationToken"></param>
+            <returns>A httpResponseMessage that will contain 204 status code, if successful</returns>
+        </member>
+        <member name="M:NgrokSharp.INgrokManager.ListTunnelsAsync(System.Threading.CancellationToken)">
+            <summary>
+                Gets a list of the tunnels
+            </summary>
+            <returns>A httpResponseMessage, that can be parse into TunnelsDetailsDTO </returns>
+        </member>
+        <member name="M:NgrokSharp.INgrokManager.ListCapturedRequests(System.UInt32,System.Threading.CancellationToken)">
+            <summary>
+            Returns a list of all HTTP requests captured for inspection. This will only return requests that are still in memory (ngrok evicts captured requests when their memory usage exceeds inspect_db_size) 
+            </summary>
+            <param name="limit">maximum number of requests to return</param>
+            <param name="cancellationToken"></param>
+            <returns> A HttpResponseMessage that can be parsed into a CapturedRequestRootDTO</returns>
+        </member>
+        <member name="M:NgrokSharp.INgrokManager.ListCapturedRequests(System.String,System.UInt32,System.Threading.CancellationToken)">
+            <summary>
+            Returns a list of all HTTP requests captured for inspection. This will only return requests that are still in memory (ngrok evicts captured requests when their memory usage exceeds inspect_db_size) 
+            </summary>
+            <param name="name">filter requests only for the given tunnel name</param>
+            <param name="limit">maximum number of requests to return</param>
+            <param name="cancellationToken"></param>
+            <returns> A HttpResponseMessage that can be parsed into a CapturedRequestRootDTO</returns>
+        </member>
+        <member name="M:NgrokSharp.INgrokManager.CapturedRequestDetail(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Returns metadata and raw bytes of a captured request. The raw data is base64-encoded in the JSON response.
+            </summary>
+            <param name="requestId"></param>
+            <param name="cancellationToken"></param>
+            <returns></returns>
+            <exception cref="T:System.ArgumentException">RequestId but not be null or whitespace</exception>
+        </member>
+        <member name="M:NgrokSharp.INgrokManager.DeleteCapturedRequests(System.Threading.CancellationToken)">
+            <summary>
+            Deletes all captured requests
+            </summary>
+            <param name="cancellationToken"></param>
+            <returns>204 status code with no response body</returns>
+        </member>
+        <member name="T:NgrokSharp.NgrokManager.Region">
+            <summary>
+                Configure one of the supported regions to be used. https://ngrok.com/docs#global-locations
+            </summary>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.#ctor(System.String,Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+                Constructor for NgrokManager
+            </summary>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.#ctor(Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+                Constructor for NgrokManager. Only use this if you need logging.
+            </summary>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.DownloadAndUnzipNgrokAsync(System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+                Downloads Ngrok.
+            </summary>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.SetNgrokDirectory(System.String)">
+            <summary>
+            Sets the path to a directory that contains the Ngrok executable. Only use this method you don't wish NgrokSharp to manage the ngrok executable. <see cref="M:NgrokSharp.NgrokManager.DownloadAndUnzipNgrokAsync(System.Boolean,System.Threading.CancellationToken)"/>  
+            </summary>
+            <param name="pathToExecutable">Path to a directory that contains the Ngrok executable</param>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.SetNgrokDirectory(System.String,Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Sets the path to a directory that contains the Ngrok executable. Only use this method you don't wish NgrokSharp to manage the ngrok executable. <see cref="M:NgrokSharp.NgrokManager.DownloadAndUnzipNgrokAsync(System.Boolean,System.Threading.CancellationToken)"/>  
+            </summary>
+            <param name="pathToExecutable">Path to a directory that contains the Ngrok executable</param>
+            <param name="logger"></param>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.RegisterAuthTokenAsync(System.String)">
+            <summary>
+                Registers your authtoken, if empty your sessions will be restricted to 2 hours.
+            </summary>
+            <param name="authtoken">The token</param>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.StartNgrok(NgrokSharp.NgrokManager.Region)">
+            <summary>
+                Starts Ngrok
+            </summary>
+            <param name="region">DataCenter region</param>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.StartNgrokWithLogging(NgrokSharp.NgrokManager.Region)">
+            <summary>
+            Only use this if you passed ILogger into the constructor
+            </summary>
+            <param name="region"></param>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.StartTunnelAsync(NgrokSharp.DTO.StartTunnelDTO,System.Threading.CancellationToken)">
+            <summary>
+                Starts a Ngrok tunnel
+            </summary>
+            <param name="startTunnelDto"></param>
+            <param name="cancellationToken"></param>
+            <returns>A httpResponseMessage that can be parse into TunnelDetailDTO</returns>
+            <exception cref="T:System.ArgumentNullException">The input, can't be null</exception>
+            <exception cref="T:System.ArgumentException">Missing values in input</exception>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.StopTunnelAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+                Stops a ngrok tunnel
+            </summary>
+            <param name="name">Name of the tunnel to stop</param>
+            <param name="cancellationToken"></param>
+            <returns>A httpResponseMessage that will contain 204 status code, if successful</returns>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.ListCapturedRequests(System.UInt32,System.Threading.CancellationToken)">
+            <summary>
+            Returns a list of all HTTP requests captured for inspection. This will only return requests that are still in memory (ngrok evicts captured requests when their memory usage exceeds inspect_db_size) 
+            </summary>
+            <param name="limit">maximum number of requests to return</param>
+            <param name="cancellationToken"></param>
+            <returns> A HttpResponseMessage that can be parsed into a CapturedRequestRootDTO</returns>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.ListCapturedRequests(System.String,System.UInt32,System.Threading.CancellationToken)">
+            <summary>
+            Returns a list of all HTTP requests captured for inspection. This will only return requests that are still in memory (ngrok evicts captured requests when their memory usage exceeds inspect_db_size) 
+            </summary>
+            <param name="name">filter requests only for the given tunnel name</param>
+            <param name="limit">maximum number of requests to return</param>
+            <param name="cancellationToken"></param>
+            <returns> A HttpResponseMessage that can be parsed into a CapturedRequestRootDTO</returns>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.ListTunnelsAsync(System.Threading.CancellationToken)">
+            <summary>
+                Gets a list of the tunnels
+            </summary>
+            <returns>A httpResponseMessage, that can be parse into TunnelsDetailsDTO </returns>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.CapturedRequestDetail(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Returns metadata and raw bytes of a captured request. The raw data is base64-encoded in the JSON response.
+            </summary>
+            <param name="requestId"></param>
+            <param name="cancellationToken"></param>
+            <returns></returns>
+            <exception cref="T:System.ArgumentException">RequestId but not be null or whitespace</exception>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.DeleteCapturedRequests(System.Threading.CancellationToken)">
+            <summary>
+            Deletes all captured requests
+            </summary>
+            <param name="cancellationToken"></param>
+            <returns>204 status code with no response body</returns>
+        </member>
+        <member name="M:NgrokSharp.NgrokManager.StopNgrok">
+            <summary>
+                Stops Ngrok
+            </summary>
+        </member>
+        <member name="M:NgrokSharp.PlatformSpecific.Windows.PlatformWindows.StartNgrok(System.String)">
+            <summary>
+            Starts Ngrok normally 
+            </summary>
+            <param name="region"></param>
+        </member>
+    </members>
+</doc>

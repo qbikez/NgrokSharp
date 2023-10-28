@@ -53,7 +53,7 @@ namespace NgrokSharp.PlatformSpecific.Windows
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     FileName = BinaryPath,
-                    Arguments = $"start --none -region {region}"
+                    Arguments = $"start --none --region {region}"
                 };
                 try
                 {
@@ -88,7 +88,7 @@ namespace NgrokSharp.PlatformSpecific.Windows
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     FileName = BinaryPath,
-                    Arguments = $"start --none -region {region} --log=stdout"
+                    Arguments = $"start --none --region {region} --log=stdout"
                 };
                 try
                 {

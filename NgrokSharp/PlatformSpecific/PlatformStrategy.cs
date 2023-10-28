@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using static System.Environment;
@@ -22,6 +23,8 @@ namespace NgrokSharp.PlatformSpecific
         public abstract Task RegisterAuthTokenAsync(string authtoken);
         public abstract void StartNgrok(string region);
         public abstract void StartNgrokWithLogging(string region);
+
+        public event Action<string> UrlChanged;
 
         public PlatformStrategy(string downloadFolder, ILogger? logger = null)
         {
@@ -63,15 +66,20 @@ namespace NgrokSharp.PlatformSpecific
             }
 
             // Build structured log data
-            var data = ParseLogData(args.Data);
-            var logFormatData = data.Where(d => d.Key != "lvl" && d.Key != "t")
-                .ToDictionary(e => e.Key, e => e.Value);
-            var logFormatString = GetLogFormatString(logFormatData);
-            var logLevel = ParseLogLevel(data["lvl"]);
+            //var data = ParseLogData(args.Data);
+            //var logFormatData = data.Where(d => d.Key != "lvl" && d.Key != "t")
+            //    .ToDictionary(e => e.Key, e => e.Value);
+            //var logFormatString = GetLogFormatString(logFormatData);
+            //var logLevel = ParseLogLevel(data["lvl"]);
+            var match  = Regex.Match(args.Data, "addr=([^\\s]+)");
+            if (match.Success)
+            {
+                UrlChanged?.Invoke(match.Groups[1].Value);
+            }
 
-            _logger?.Log(logLevel, logFormatString, logFormatData.Values.ToArray());
+            _logger?.Log(LogLevel.Debug, args.Data);
         }
-
+        
         private static Dictionary<string, string> ParseLogData(string input)
         {
             var result = new Dictionary<string, string>();
